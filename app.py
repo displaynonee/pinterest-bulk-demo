@@ -118,12 +118,24 @@ def clean_title_input(kw):
     return kw_clean.strip().title()
 
 def load_font(font_setting, size):
-    paths_to_try = [font_setting, "fonts/Montserrat-Bold.ttf", "arial.ttf", "Courier"]
-    for path in paths_to_try:
-        if path == "Varsayılan Sistem":
-            continue
-        try: return ImageFont.truetype(path, size)
-        except: continue
+    # 1. Kullanıcı arayüzden spesifik bir font dosyası seçtiyse ve dosya varsa yükle
+    if font_setting and font_setting != "Varsayılan Sistem" and os.path.exists(font_setting):
+        try:
+            return ImageFont.truetype(font_setting, size)
+        except:
+            pass
+
+    # 2. fonts/ klasöründeki ilk .ttf dosyasını otomatik bul ve kullan
+    if os.path.exists(FONTS_DIR):
+        ttf_files = [f for f in os.listdir(FONTS_DIR) if f.lower().endswith('.ttf')]
+        if ttf_files:
+            try:
+                font_path = os.path.join(FONTS_DIR, ttf_files[0])
+                return ImageFont.truetype(font_path, size)
+            except:
+                pass
+
+    # 3. Hiçbiri çalışmazsa sistem varsayılan fontuna düş
     return ImageFont.load_default()
 
 def text_wh(draw, text, font):
