@@ -35,7 +35,15 @@ BADGE_CTA_POOL = [
     "FREE GUIDE", "MOST POPULAR", "BEGINNER GUIDE", "CREATIVE IDEAS", 
     "BUDGET FRIENDLY", "EXPERT TIPS"
 ]
-
+# Streamlit Secrets veya varsayılan yapılandırmadan API Key'i alma
+def get_default_pexels_key():
+    try:
+        # Önce Streamlit Secrets kontrol edilir
+        return st.secrets["PEXELS_API_KEY"]
+    except:
+        # Secrets ayarlanmadıysa boş döner
+        return ""
+        
 def hex_to_rgb(hex_str):
     """Converts HEX color string to RGB tuple"""
     hex_str = hex_str.lstrip('#')
@@ -338,7 +346,9 @@ with col1:
     site_url = st.text_input("Hedef Site URL Adresi:", config["settings"].get("site_url"))
     wp_upload = st.text_input("WordPress Görsel Yükleme Adresi (Uploads Base):", config["settings"].get("wp_upload_base"))
     board_name = st.text_input("Pinterest Pano Adı (Board Name):", config["settings"].get("board_name"))
-    pexels_key = st.text_input("🔑 Pexels API Anahtarı:", config["settings"].get("pexels_api_key", ""), type="password")
+    # Sistemde Secrets varsa onu kullanır, yoksa config'deki değeri alır
+    default_key = get_default_pexels_key() or config["settings"].get("pexels_api_key", "")
+    pexels_key = st.text_input("🔑 Pexels API Anahtarı:", value=default_key, type="password")
     max_pins_per_cat = st.number_input("📈 Kategori Başına Üretilecek Pin Sayısı:", min_value=1, max_value=500, value=int(config["settings"].get("max_pins_per_cat", 50)))
     
     saved_font = config["settings"].get("selected_font", "Varsayılan Sistem")
