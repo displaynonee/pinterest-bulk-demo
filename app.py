@@ -21,6 +21,23 @@ DEMO_PIN_LIMIT = 2     # Max pins per category in Demo Mode
 # Page Configuration
 st.set_page_config(page_title="Pinterest Bulk Image & Content Engine (Demo)", layout="wide")
 
+# 🔽 BURAYA YAPIŞTIRILACAK (Göz butonunu gizler)
+st.markdown("""
+    <style>
+    input[type="password"]::-ms-reveal,
+    input[type="password"]::-ms-clear {
+        display: none !important;
+    }
+    button[aria-label="Show password"],
+    button[aria-label="Hide password"],
+    button[aria-label="Show password text"],
+    button[aria-label="Hide password text"] {
+        display: none !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+
 CONFIG_FILE = "config.json"
 USED_PINS_FILE = "used_pins.json"
 BASE_BG_DIR = "backgrounds"
@@ -348,7 +365,14 @@ with col1:
     board_name = st.text_input("Pinterest Pano Adı (Board Name):", config["settings"].get("board_name"))
     # Sistemde Secrets varsa onu kullanır, yoksa config'deki değeri alır
     default_key = get_default_pexels_key() or config["settings"].get("pexels_api_key", "")
-    pexels_key = st.text_input("🔑 Pexels API Anahtarı:", value=default_key, type="password")
+    # Pexels API Key alanı (Secrets'tan alır, göz butonu kapalı ve kilitlidir)
+    default_key = get_default_pexels_key() or config["settings"].get("pexels_api_key", "")
+    pexels_key = st.text_input(
+        "🔑 Pexels API Anahtarı (Sistem Tarafından Tanımlı):", 
+        value=default_key, 
+        type="password", 
+        disabled=True
+    )
     max_pins_per_cat = st.number_input("📈 Kategori Başına Üretilecek Pin Sayısı:", min_value=1, max_value=500, value=int(config["settings"].get("max_pins_per_cat", 50)))
     
     saved_font = config["settings"].get("selected_font", "Varsayılan Sistem")
@@ -449,8 +473,31 @@ with col2:
     st.markdown("---")
     st.subheader("🤖 Otomasyon Motoru Kontrolü")
 
-    if st.button("🚀 BOTU BAŞLAT (TOPLU ÜRETİM YAP)", type="primary", use_container_width=True):
+   if st.button("🚀 BOTU BAŞLAT (TOPLU ÜRETİM YAP)", type="primary", use_container_width=True):
         st.write("### 🎬 Canlı İşlem Günlüğü & Üretilen Görseller")
+        
+        # 🧹 1. TEMİZLİK MEKANİZMASI (Tam bu satırın altında çalışır)
+        output_dir = "outputs"
+        if os.path.exists(output_dir):
+            shutil.rmtree(output_dir)
+        os.makedirs(output_dir, exist_ok=True)
+        
+        if os.path.exists("demo_outputs.zip"):
+            os.remove("demo_outputs.zip")
+            
+        if DEMO_MODE and os.path.exists(USED_PINS_FILE):
+            os.remove(USED_PINS_FILE)
+            used_pins_data = {}
+            
+            # d) backgrounds/ içindeki eski görselleri sil (İsteğe Bağlı)
+        if DEMO_MODE and os.path.exists(BASE_BG_DIR):
+            for sub_folder in os.listdir(BASE_BG_DIR):
+                sub_path = os.path.join(BASE_BG_DIR, sub_folder)
+                if os.path.isdir(sub_path):
+                    shutil.rmtree(sub_path)
+                    os.makedirs(sub_path, exist_ok=True)
+
+        # ⚙️ 2. ÜRETİM SÜRECİ VE KODLARIN DEVAMI...
         
         config = load_full_config()
         used_pins_data = load_used_pins()
