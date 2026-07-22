@@ -21,7 +21,7 @@ DEMO_PIN_LIMIT = 2     # Max pins per category in Demo Mode
 # Page Configuration
 st.set_page_config(page_title="Pinterest Bulk Image & Content Engine (Demo)", layout="wide")
 
-# 🔽 BURAYA YAPIŞTIRILACAK (Göz butonunu gizler)
+# CSS: Şifre alanlarındaki 'Göz' (Göster/Gizle) butonunu kapatır
 st.markdown("""
     <style>
     input[type="password"]::-ms-reveal,
@@ -37,7 +37,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-
 CONFIG_FILE = "config.json"
 USED_PINS_FILE = "used_pins.json"
 BASE_BG_DIR = "backgrounds"
@@ -52,15 +51,14 @@ BADGE_CTA_POOL = [
     "FREE GUIDE", "MOST POPULAR", "BEGINNER GUIDE", "CREATIVE IDEAS", 
     "BUDGET FRIENDLY", "EXPERT TIPS"
 ]
-# Streamlit Secrets veya varsayılan yapılandırmadan API Key'i alma
+
 def get_default_pexels_key():
+    """Streamlit Secrets veya varsayılan yapılandırmadan API Key'i alır"""
     try:
-        # Önce Streamlit Secrets kontrol edilir
         return st.secrets["PEXELS_API_KEY"]
     except:
-        # Secrets ayarlanmadıysa boş döner
         return ""
-        
+
 def hex_to_rgb(hex_str):
     """Converts HEX color string to RGB tuple"""
     hex_str = hex_str.lstrip('#')
@@ -143,14 +141,13 @@ def clean_title_input(kw):
     return kw_clean.strip().title()
 
 def load_font(font_setting, size):
-    # 1. Kullanıcı arayüzden spesifik bir font dosyası seçtiyse ve dosya varsa yükle
+    """Gelişmiş Font Yükleyici: fonts/ klasöründeki her .ttf dosyasını tatar"""
     if font_setting and font_setting != "Varsayılan Sistem" and os.path.exists(font_setting):
         try:
             return ImageFont.truetype(font_setting, size)
         except:
             pass
 
-    # 2. fonts/ klasöründeki ilk .ttf dosyasını otomatik bul ve kullan
     if os.path.exists(FONTS_DIR):
         ttf_files = [f for f in os.listdir(FONTS_DIR) if f.lower().endswith('.ttf')]
         if ttf_files:
@@ -160,7 +157,6 @@ def load_font(font_setting, size):
             except:
                 pass
 
-    # 3. Hiçbiri çalışmazsa sistem varsayılan fontuna düş
     return ImageFont.load_default()
 
 def text_wh(draw, text, font):
@@ -363,16 +359,11 @@ with col1:
     site_url = st.text_input("Hedef Site URL Adresi:", config["settings"].get("site_url"))
     wp_upload = st.text_input("WordPress Görsel Yükleme Adresi (Uploads Base):", config["settings"].get("wp_upload_base"))
     board_name = st.text_input("Pinterest Pano Adı (Board Name):", config["settings"].get("board_name"))
-    # Sistemde Secrets varsa onu kullanır, yoksa config'deki değeri alır
+    
+    # Secrets'tan alır, göz butonu kapatılmış ve müdahaleye kilitlidir
     default_key = get_default_pexels_key() or config["settings"].get("pexels_api_key", "")
-    # Pexels API Key alanı (Secrets'tan alır, göz butonu kapalı ve kilitlidir)
-    default_key = get_default_pexels_key() or config["settings"].get("pexels_api_key", "")
-    pexels_key = st.text_input(
-        "🔑 Pexels API Anahtarı (Sistem Tarafından Tanımlı):", 
-        value=default_key, 
-        type="password", 
-        disabled=True
-    )
+    pexels_key = st.text_input("🔑 Pexels API Anahtarı (Sistem Tarafından Tanımlı):", value=default_key, type="password", disabled=True)
+    
     max_pins_per_cat = st.number_input("📈 Kategori Başına Üretilecek Pin Sayısı:", min_value=1, max_value=500, value=int(config["settings"].get("max_pins_per_cat", 50)))
     
     saved_font = config["settings"].get("selected_font", "Varsayılan Sistem")
@@ -466,17 +457,17 @@ with col2:
             st.markdown("---")
             how_many = st.number_input(f"İndirilecek Görsel Sayısı:", min_value=1, max_value=100, value=20, key=f"num_{folder}")
             if st.button(f"📥 Pexels'ten Otomatik İndir ({folder})", key=f"btn_{folder}"):
-                success, msg = download_pexels_images(config["settings"].get("pexels_api_key", ""), updated_pex, folder_path, count=how_many)
+                success, msg = download_pexels_images(pexels_key, updated_pex, folder_path, count=how_many)
                 if success: st.success(msg); st.rerun()
                 else: st.error(msg)
 
     st.markdown("---")
     st.subheader("🤖 Otomasyon Motoru Kontrolü")
 
-   if st.button("🚀 BOTU BAŞLAT (TOPLU ÜRETİM YAP)", type="primary", use_container_width=True):
+    if st.button("🚀 BOTU BAŞLAT (TOPLU ÜRETİM YAP)", type="primary", use_container_width=True):
         st.write("### 🎬 Canlı İşlem Günlüğü & Üretilen Görseller")
         
-        # 🧹 1. TEMİZLİK MEKANİZMASI (Tam bu satırın altında çalışır)
+        # 🧹 TEMİZLİK MEKANİZMASI
         output_dir = "outputs"
         if os.path.exists(output_dir):
             shutil.rmtree(output_dir)
@@ -489,18 +480,7 @@ with col2:
             os.remove(USED_PINS_FILE)
             used_pins_data = {}
             
-            # d) backgrounds/ içindeki eski görselleri sil (İsteğe Bağlı)
-        if DEMO_MODE and os.path.exists(BASE_BG_DIR):
-            for sub_folder in os.listdir(BASE_BG_DIR):
-                sub_path = os.path.join(BASE_BG_DIR, sub_folder)
-                if os.path.isdir(sub_path):
-                    shutil.rmtree(sub_path)
-                    os.makedirs(sub_path, exist_ok=True)
-
-        # ⚙️ 2. ÜRETİM SÜRECİ VE KODLARIN DEVAMI...
-        
         config = load_full_config()
-        used_pins_data = load_used_pins()
         cfg = config.get("settings", {})
         
         # DEMO LIMIT CONTROL
@@ -509,10 +489,6 @@ with col2:
             max_target = min(max_target, DEMO_PIN_LIMIT)
             
         active_folders = sorted([d for d in os.listdir(BASE_BG_DIR) if os.path.isdir(os.path.join(BASE_BG_DIR, d))])
-        
-        output_dir = "outputs"
-        if os.path.exists(output_dir): shutil.rmtree(output_dir)
-        os.makedirs(output_dir)
         
         start_time = _dt.datetime.now() + _dt.timedelta(minutes=cfg.get("start_delay_min", 5)) - _dt.timedelta(hours=3)
         upload_folder = _dt.datetime.now().strftime("%Y/%m/")
