@@ -41,9 +41,23 @@ CONFIG_FILE = "config.json"
 USED_PINS_FILE = "used_pins.json"
 BASE_BG_DIR = "backgrounds"
 FONTS_DIR = "fonts"
+OUTPUT_DIR = "outputs"
 
 os.makedirs(BASE_BG_DIR, exist_ok=True)
 os.makedirs(FONTS_DIR, exist_ok=True)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+def reset_output_directories():
+    """Outputs klasörünü ve geçici dosyaları tamamen silip yeniden oluşturur"""
+    if os.path.exists(OUTPUT_DIR):
+        shutil.rmtree(OUTPUT_DIR)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    
+    if os.path.exists("demo_outputs.zip"):
+        os.remove("demo_outputs.zip")
+        
+    if DEMO_MODE and os.path.exists(USED_PINS_FILE):
+        os.remove(USED_PINS_FILE)
 
 # Top Badge Dynamic CTA Pool (English / Global)
 BADGE_CTA_POOL = [
@@ -141,7 +155,7 @@ def clean_title_input(kw):
     return kw_clean.strip().title()
 
 def load_font(font_setting, size):
-    """Gelişmiş Font Yükleyici: fonts/ klasöründeki her .ttf dosyasını tatar"""
+    """Gelişmiş Font Yükleyici: fonts/ klasöründeki her .ttf dosyasını tarar"""
     if font_setting and font_setting != "Varsayılan Sistem" and os.path.exists(font_setting):
         try:
             return ImageFont.truetype(font_setting, size)
@@ -405,11 +419,18 @@ with col1:
             st.rerun()
 
     with col_reset:
-        if st.button("🚨 Tüm Ayarları Sıfırla", type="secondary", use_container_width=True):
+        if st.button("🚨 Ayarları Sıfırla", type="secondary", use_container_width=True):
             if os.path.exists(CONFIG_FILE): os.remove(CONFIG_FILE)
-            if os.path.exists(USED_PINS_FILE): os.remove(USED_PINS_FILE)
+            reset_output_directories()
             st.warning("Tüm yapılandırma ve geçmiş veriler sıfırlandı!")
             st.rerun()
+
+    st.markdown("---")
+    st.subheader("🗑️ Önbellek & Klasör Temizliği")
+    if st.button("🗑️ Tüm Üretilen Çıktıları ve Önbelleği Sıfırla", use_container_width=True, type="secondary"):
+        reset_output_directories()
+        st.success("Tüm geçici üretilen görseller ve çıktılar başarıyla silindi!")
+        st.rerun()
 
     st.markdown("---")
     st.subheader("📂 Yeni Niş / Kategori Ekle")
@@ -467,21 +488,12 @@ with col2:
     if st.button("🚀 BOTU BAŞLAT (TOPLU ÜRETİM YAP)", type="primary", use_container_width=True):
         st.write("### 🎬 Canlı İşlem Günlüğü & Üretilen Görseller")
         
-        # 🧹 TEMİZLİK MEKANİZMASI
-        output_dir = "outputs"
-        if os.path.exists(output_dir):
-            shutil.rmtree(output_dir)
-        os.makedirs(output_dir, exist_ok=True)
-        
-        if os.path.exists("demo_outputs.zip"):
-            os.remove("demo_outputs.zip")
-            
-        if DEMO_MODE and os.path.exists(USED_PINS_FILE):
-            os.remove(USED_PINS_FILE)
-            used_pins_data = {}
+        # Her başlatmada klasörü tamamen sıfırla
+        reset_output_directories()
             
         config = load_full_config()
         cfg = config.get("settings", {})
+        used_pins_data = load_used_pins()
         
         # DEMO LIMIT CONTROL
         max_target = cfg.get("max_pins_per_cat", 50)
@@ -513,7 +525,7 @@ with col2:
                 used_pins_data[folder].append(chosen_title)
                 
                 filename = f"{batch_id}-{folder}-{i}-{slugify(chosen_title)[:30]}.webp"
-                out_path = os.path.join(output_dir, filename)
+                out_path = os.path.join(OUTPUT_DIR, filename)
                 image_url = f"{cfg.get('wp_upload_base')}{upload_folder}{filename}"
                 ref = hashlib.md5(f"{chosen_title}{i}".encode()).hexdigest()[:8]
                 dest_link = f"{cfg.get('site_url')}{cat_info.get('pillar_url')}?ref={ref}"
@@ -542,7 +554,7 @@ with col2:
         if csv_rows:
             save_used_pins(used_pins_data)
             
-            csv_path = os.path.join(output_dir, "pinterest_bulk_upload.csv")
+            csv_path = os.path.join(OUTPUT_DIR, "pinterest_bulk_upload.csv")
             with open(csv_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 writer.writerow(["Title", "Media URL", "Pinterest board", "Thumbnail", "Description", "Link", "Publish date", "Keywords"])
@@ -567,7 +579,7 @@ with col2:
                     )
             
             # 2. ZIP Download Button
-            shutil.make_archive("demo_outputs", 'zip', output_dir)
+            shutil.make_archive("demo_outputs", 'zip', OUTPUT_DIR)
             with btn_col2:
                 with open("demo_outputs.zip", "rb") as zip_file:
                     st.download_button(
