@@ -13,13 +13,13 @@ from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 
 # ─────────────────────────────────────────────
-# DEMO MODU AYARLARI (R10 & CANLI DEMO İÇİN)
+# DEMO MODE SETTINGS (FOR LIVE DEMO)
 # ─────────────────────────────────────────────
-DEMO_MODE = True       # Canlı demoda True, Tam Sürümde False yapılır
-DEMO_PIN_LIMIT = 2     # Demo modunda kategori başına üretilecek maksimum Pin sayısı
+DEMO_MODE = True       # Set to True for live demo, False for Full Version
+DEMO_PIN_LIMIT = 2     # Max pins per category in Demo Mode
 
-# Sayfa Yapılandırması
-st.set_page_config(page_title="Pinterest Toplu Görsel & İçerik Motoru (Demo)", layout="wide")
+# Page Configuration
+st.set_page_config(page_title="Pinterest Bulk Image & Content Engine (Demo)", layout="wide")
 
 CONFIG_FILE = "config.json"
 USED_PINS_FILE = "used_pins.json"
@@ -29,15 +29,15 @@ FONTS_DIR = "fonts"
 os.makedirs(BASE_BG_DIR, exist_ok=True)
 os.makedirs(FONTS_DIR, exist_ok=True)
 
-# Üst Rozet (Badge) İçin Türkçe Dinamik CTA Listesi
+# Top Badge Dynamic CTA Pool (English / Global)
 BADGE_CTA_POOL = [
-    "EASY TO BUILD", "MUST READ", "TRENDING", "STEP BY STEP", 
-    "FREE GUIDE", "TOP RATED", "BEGINNER FRIENDLY", "CREATIVE IDEAS",
+    "EASY TO APPLY", "MUST READ", "TRENDING IDEAS", "STEP BY STEP", 
+    "FREE GUIDE", "MOST POPULAR", "BEGINNER GUIDE", "CREATIVE IDEAS", 
     "BUDGET FRIENDLY", "EXPERT TIPS"
 ]
 
 def hex_to_rgb(hex_str):
-    """HEX renk kodunu RGB tuple formatına dönüştürür"""
+    """Converts HEX color string to RGB tuple"""
     hex_str = hex_str.lstrip('#')
     return tuple(int(hex_str[i:i+2], 16) for i in (0, 2, 4))
 
@@ -46,7 +46,7 @@ def load_full_config():
         "settings": {
             "site_url": "https://example.com/",
             "wp_upload_base": "https://example.com/wp-content/uploads/",
-            "board_name": "Pinterest Panom",
+            "board_name": "My Pinterest Board",
             "start_delay_min": 5,
             "interval_min": 10,
             "ab_test_ratio": 0.0,
@@ -59,10 +59,10 @@ def load_full_config():
             "btn_color": "#FBA167"
         },
         "categories": {
-            "genel": {
-                "pillar_url": "rehber/",
-                "keywords": "dekorasyon fikirleri, ev tasarımı, kendin yap, pratik bilgiler, modern stiller",
-                "pexels_terms": "abstract, texture"
+            "general": {
+                "pillar_url": "guide/",
+                "keywords": "home decor ideas, interior design, diy crafts, practical tips, modern styles",
+                "pexels_terms": "home decor"
             }
         }
     }
@@ -92,7 +92,7 @@ def save_used_pins(used_data):
         json.dump(used_data, f, ensure_ascii=False, indent=4)
 
 def get_available_fonts():
-    """fonts/ klasöründeki .ttf fontlarını listeler"""
+    """Lists .ttf fonts in fonts/ directory"""
     fonts = ["Varsayılan Sistem", "arial.ttf", "Courier"]
     if os.path.exists(FONTS_DIR):
         local_fonts = [f for f in os.listdir(FONTS_DIR) if f.lower().endswith(".ttf")]
@@ -113,7 +113,7 @@ def slugify(text):
     return re.sub(r"[\s-]+", "-", re.sub(r"[^a-z0-9\s-]", "", text)).strip("-")
 
 def clean_title_input(kw):
-    kw_clean = re.sub(r"^(how to choose|how to|choose the best)\s+", "", kw, flags=re.IGNORECASE)
+    kw_clean = re.sub(r"^(best|how to choose|how to make)\s+", "", kw, flags=re.IGNORECASE)
     kw_clean = re.sub(r"\s+(guide|tips|ideas)$", "", kw_clean, flags=re.IGNORECASE)
     return kw_clean.strip().title()
 
@@ -168,7 +168,7 @@ def create_pin_new(bg_path, output_path, title, alpha_top, alpha_bot, palette, s
     canvas = Image.alpha_composite(canvas, Image.fromarray(grad_arr, "RGBA"))
     draw = ImageDraw.Draw(canvas)
     
-    # Rozet Renk Dönüşümü
+    # Top Badge Transformation
     badge_rgb = hex_to_rgb(badge_color_hex) + (255,)
     badge_text = random.choice(BADGE_CTA_POOL)
     badge_font = load_font(font_setting, 32)
@@ -185,9 +185,9 @@ def create_pin_new(bg_path, output_path, title, alpha_top, alpha_bot, palette, s
     badge_center_y = by1 + (by2 - by1) // 2
     draw_centered_text(draw, 500, badge_center_y, badge_text, badge_font, (255, 255, 255, 255))
     
-    # CTA Buton Renk Dönüşümü
+    # CTA Button Transformation (English)
     btn_rgb = hex_to_rgb(btn_color_hex) + (255,)
-    btn_text = "EXPLORE NOW"
+    btn_text = "READ MORE"
     btn_font = load_font(font_setting, 36)
     btn_w, btn_h = text_wh(draw, btn_text, btn_font)
     
@@ -226,36 +226,34 @@ def create_pin_new(bg_path, output_path, title, alpha_top, alpha_bot, palette, s
     
     clean_domain = site_url_input.replace("https://", "").replace("http://", "").strip("/")
     if not clean_domain:
-        clean_domain = "siteniz.com"
+        clean_domain = "yoursite.com"
         
     watermark_font = load_font(font_setting, 28)
     draw_centered_text(draw, 500, btn_y2 + 20, clean_domain, watermark_font, (255, 255, 255, 220))
     
-    # ─────────────────────────────────────────────
-    # DEMO MODU WATERMARK (FİLİGRAN) EKLENTİSİ
-    # ─────────────────────────────────────────────
+    # DEMO MODE WATERMARK
     if DEMO_MODE:
         demo_font = load_font(font_setting, 80)
-        draw_centered_text(draw, 500, 750, "DEMO SÜRÜMÜ", demo_font, (255, 255, 255, 160), shadow=(0, 0, 0, 220))
+        draw_centered_text(draw, 500, 750, "DEMO VERSION", demo_font, (255, 255, 255, 160), shadow=(0, 0, 0, 220))
 
     canvas.convert("RGB").save(output_path, "WEBP", quality=87)
 
-#  Başlık Şablonları
+# Global / English Title Templates
 TITLE_TEMPLATES = [
-    "How to Choose the Best {keyword}", "Top 10 {keyword} Ideas You Need to See", "The Ultimate {keyword} Guide for Beginners",
-    "Essential Tips for Your Perfect {keyword}", "Creative {keyword} Trends to Follow This Year", "How to Master Your {keyword} Selection",
-    "Smart and Affordable {keyword} Solutions", "Everything You Need to Know About {keyword}", "Best Way to Find Quality {keyword}",
-    "Why You Need a Proper {keyword} Plan", "Modern {keyword} Styles and Inspirations", "7 Mind-Blowing {keyword} Secrets Revealed",
-    "Mistakes to Avoid When Choosing Your {keyword}", "The Only {keyword} Checklist You'll Ever Need", "Behind the Scenes: Beautiful {keyword} Designs",
-    "How to Budget for Your Ideal {keyword}", "The Do's and Don'ts of Professional {keyword}", "15 Unique {keyword} Inspo Ideas for 2026",
-    "Simple Step-by-Step {keyword} Tutorial", "What No One Tells You About {keyword}", "Luxury vs Affordable {keyword} Comparison",
-    "Expert Advice: Selecting the Right {keyword}", "How to Customize Your Own {keyword}", "Trending {keyword} Concepts Setting the Standard",
-    "A Complete Roadmap to Beautiful {keyword}", "Quick Guide: Understanding {keyword} Options", "How to Find the Most Durable {keyword}",
-    "Innovative {keyword} Layouts and Hacks", "The True Cost of Getting a {keyword}", "How to Pick a {keyword} Without Stress",
-    "Why {keyword} Is More Important Than You Think", "Top Rated {keyword} Styles for Every Taste", "The Hidden Meaning Behind {keyword} Choices",
-    "How to Match Your Style With {keyword}", "Shocking Facts About {keyword} Trends", "How to Upgrade Your Current {keyword} Setup",
-    "10 Surprising Ways to Use {keyword}", "Your Ultimate Handbook for All Things {keyword}", "Unlocking the Best Features of Modern {keyword}",
-    "Clever {keyword} Alternatives to Consider"
+    "How to Choose the Best {keyword}", "10 Amazing {keyword} Ideas You Must See", "Ultimate {keyword} Guide for Beginners",
+    "Essential Tips for a Perfect {keyword}", "Top Trending {keyword} Ideas This Year", "Secrets to Choosing the Right {keyword}",
+    "Budget-Friendly & Easy {keyword} Solutions", "Everything You Need to Know About {keyword}", "How to Find High-Quality {keyword}",
+    "Why You Need a Good {keyword} Plan", "Modern {keyword} Styles and Inspiration", "7 Surprising {keyword} Hacks You Should Know",
+    "Common Mistakes to Avoid in {keyword}", "The Only {keyword} Checklist You Need", "Stunning {keyword} Designs and Examples",
+    "Smart Budgeting for Your {keyword}", "Expert Guide to {keyword}", "Top {keyword} Trends for 2026",
+    "Step-by-Step {keyword} Tutorial", "The Untold Truth About {keyword}", "Quality vs Affordable {keyword} Comparison",
+    "Expert Advice: How to Find {keyword}", "How to Build Your Own {keyword} Style", "Featured New {keyword} Concepts",
+    "Complete Roadmap for {keyword}", "Quick Guide: All {keyword} Options", "How to Select Long-Lasting {keyword}",
+    "Creative {keyword} Ideas & Strategies", "Things to Consider Before Buying {keyword}", "Stress-Free Ways to Choose {keyword}",
+    "Why {keyword} is More Important Than You Think", "Popular {keyword} Examples for Every Style", "Simple Hacks to Simplify Your {keyword}",
+    "Find the Perfect {keyword} for Your Style", "Beautiful {keyword} Ideas for Inspiration", "Simple Ways to Upgrade Your {keyword}",
+    "10 Game-Changing {keyword} Tips", "The Best {keyword} Recommendations", "Benefits of Modern {keyword} Options",
+    "Alternative & Creative {keyword} Solutions"
 ]
 
 def generate_unique_title(keyword, folder_slug, used_global_dict):
@@ -272,16 +270,16 @@ def generate_unique_title(keyword, folder_slug, used_global_dict):
         if candidate not in past_titles:
             return candidate
             
-    suffixes = ["Secrets + Checklist", "Ideas for 2026", "Expert Edition", "Pro Handout", "Ultimate Edition"]
+    suffixes = ["Secrets & Hacks", "2026 Ideas", "Expert Guide", "Special Tips", "Best Options"]
     for _ in range(50):
-        candidate = f"En İyi {clean_kw} {random.choice(suffixes)} - {random.randint(100, 999)}"
+        candidate = f"Best {clean_kw} {random.choice(suffixes)} - {random.randint(100, 999)}"
         if candidate not in past_titles:
             return candidate
             
-    return f"Harika {clean_kw} Önerileri - {random.randint(1000, 9999)}"
+    return f"Awesome {clean_kw} Ideas - {random.randint(1000, 9999)}"
 
 def download_pexels_images(api_key, query, target_folder, count=10):
-    if not api_key: return False, "Pexels API Anahtarı bulunamadı!"
+    if not api_key: return False, "Pexels API Key missing!"
     os.makedirs(target_folder, exist_ok=True)
     url = f"https://api.pexels.com/v1/search?query={urllib.parse.quote(query)}&orientation=portrait&per_page={count}"
     req = urllib.request.Request(url)
@@ -291,7 +289,7 @@ def download_pexels_images(api_key, query, target_folder, count=10):
         with urllib.request.urlopen(req) as response:
             data = json.loads(response.read().decode())
             photos = data.get("photos", [])
-            if not photos: return False, f"'{query}' araması için görsel bulunamadı."
+            if not photos: return False, f"No images found for '{query}'."
             downloaded = 0
             for idx, photo in enumerate(photos):
                 img_url = photo.get("src", {}).get("large2x")
@@ -302,25 +300,23 @@ def download_pexels_images(api_key, query, target_folder, count=10):
                     with urllib.request.urlopen(img_req) as img_res, open(file_path, "wb") as out_file:
                         out_file.write(img_res.read())
                     downloaded += 1
-            return True, f"Toplam {downloaded} adet görsel başarıyla indirildi."
+            return True, f"Successfully downloaded {downloaded} images."
     except Exception as e:
-        return False, f"Pexels API Hatası: {str(e)}"
+        return False, f"Pexels API Error: {str(e)}"
 
-# ─────────────────────────────────────────────
-# AYARLARIN YÜKLENMESİ
-# ─────────────────────────────────────────────
+# Load Settings
 config = load_full_config()
 available_fonts = get_available_fonts()
 
 # ─────────────────────────────────────────────
-# STREAMLIT TÜRKÇE WEB ARAYÜZÜ
+# STREAMLIT UI
 # ─────────────────────────────────────────────
 st.title("🎯 Pinterest Toplu Görsel & İçerik Motoru")
 st.caption("Platform Bağımsız Tarayıcı Tabanlı Kodsuz Otomasyon Paneli")
 
-# R10 Canlı Demo Bilgilendirme Kutusu
+# R10 Demo Info Box
 if DEMO_MODE:
-    st.info(f"🧪 **R10 CANLI DEMO SÜRÜMÜ:** Bu mod test amaçlıdır. Her kategoriden **en fazla {DEMO_PIN_LIMIT} görsel** üretilir ve görsellere **'DEMO SÜRÜMÜ' filigranı** eklenir. Tam sürümde herhangi bir limit veya filigran bulunmamaktadır.")
+    st.info(f"🧪 **R10 CANLI DEMO SÜRÜMÜ:** Bu mod test amaçlıdır. Her kategoriden **en fazla {DEMO_PIN_LIMIT} görsel** üretilir ve görsellere **'DEMO VERSION' filigranı** eklenir. Tam sürümde herhangi bir limit veya filigran bulunmamaktadır.")
 
 col1, col2 = st.columns([1, 1])
 
@@ -380,9 +376,9 @@ with col1:
 
     st.markdown("---")
     st.subheader("📂 Yeni Niş / Kategori Ekle")
-    new_folder = st.text_input("Klasör / Niş Adı (Örn: yoga, kedi-mamasi, dekorasyon):")
-    new_url = st.text_input("Hedef Sayfa / Yazı URL'i (Örn: yoga-matlari-rehberi/):")
-    new_kws = st.text_area("Anahtar Kelimeler (Minimum 6 adet anahtar kelimeyi virgülle ayırarak yazın):")
+    new_folder = st.text_input("Klasör / Niş Adı (Örn: yoga, cat-food, home-decor):")
+    new_url = st.text_input("Hedef Sayfa / Yazı URL'i (Örn: yoga-mats-guide/):")
+    new_kws = st.text_area("Anahtar Kelimeler (İngilizce - virgülle ayırarak yazın):")
     new_pex = st.text_input("Pexels Otomatik Arama Kelimesi:")
     
     if st.button("➕ Kategoriyi ve Klasörü Oluştur", use_container_width=True):
@@ -404,7 +400,7 @@ with col2:
         images_count = len([f for f in os.listdir(folder_path) if f.lower().endswith(("jpg", "jpeg", "png", "webp"))])
         
         if folder not in config["categories"]:
-            config["categories"][folder] = {"pillar_url": f"{folder}/", "keywords": f"{folder} trendleri", "pexels_terms": folder}
+            config["categories"][folder] = {"pillar_url": f"{folder}/", "keywords": f"{folder} trends", "pexels_terms": folder}
             save_full_config(config)
             
         info = config["categories"][folder]
@@ -432,13 +428,13 @@ with col2:
     st.subheader("🤖 Otomasyon Motoru Kontrolü")
 
     if st.button("🚀 BOTU BAŞLAT (TOPLU ÜRETİM YAP)", type="primary", use_container_width=True):
-        st.write("### 🎬 Canlı İşlem Günlüğü")
+        st.write("### 🎬 Canlı İşlem Günlüğü & Üretilen Görseller")
         
         config = load_full_config()
         used_pins_data = load_used_pins()
         cfg = config.get("settings", {})
         
-        # DEMO MODU LİMİT KONTROLÜ
+        # DEMO LIMIT CONTROL
         max_target = cfg.get("max_pins_per_cat", 50)
         if DEMO_MODE:
             max_target = min(max_target, DEMO_PIN_LIMIT)
@@ -457,7 +453,7 @@ with col2:
         
         for folder in active_folders:
             folder_path = os.path.join(BASE_BG_DIR, folder)
-            cat_info = config["categories"].get(folder, {"pillar_url": f"{folder}/", "keywords": f"{folder} trendleri", "pexels_terms": folder})
+            cat_info = config["categories"].get(folder, {"pillar_url": f"{folder}/", "keywords": f"{folder} trends", "pexels_terms": folder})
             local_bgs = sorted([os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.lower().endswith(("jpg", "jpeg", "png", "webp"))])
             
             if not local_bgs: continue
@@ -483,21 +479,56 @@ with col2:
                 try:
                     create_pin_new(bg_path, out_path, chosen_title,
                                    cfg.get("panel_alpha_top", 120), cfg.get("panel_alpha_bot", 165), 
-                                   COLOR_PALETTES[global_pin_counter % len(COLOR_PALETTES)], cfg.get("site_url", "siteniz.com"),
+                                   COLOR_PALETTES[global_pin_counter % len(COLOR_PALETTES)], cfg.get("site_url", "yoursite.com"),
                                    cfg.get("selected_font", "Varsayılan Sistem"),
                                    cfg.get("badge_color", "#F26C3F"),
                                    cfg.get("btn_color", "#FBA167"))
                     
+                    # LIVE SCREEN PREVIEW
                     st.text(f"✅ [{i+1}/{max_target}] -> {chosen_title}")
-                    csv_rows.append([chosen_title, image_url, cfg.get("board_name"), "", f"En iyi {main_kw.lower()} detayları ve ipuçları.", dest_link, pub_str, ", ".join(chosen_kws)])
+                    st.image(out_path, caption=f"Generated Pin: {chosen_title}", width=280)
+                    
+                    csv_rows.append([chosen_title, image_url, cfg.get("board_name"), "", f"Best {main_kw.lower()} tips and ideas.", dest_link, pub_str, ", ".join(chosen_kws)])
                     global_pin_counter += 1
                 except Exception as e:
-                    st.text(f"❌ Hata [{i+1}]: {e}")
+                    st.text(f"❌ Error [{i+1}]: {e}")
                     
+        # DOWNLOAD BUTTONS AND CSV GENERATION
         if csv_rows:
             save_used_pins(used_pins_data)
-            with open("outputs/pinterest_bulk_upload.csv", "w", newline="", encoding="utf-8") as f:
+            
+            csv_path = os.path.join(output_dir, "pinterest_bulk_upload.csv")
+            with open(csv_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 writer.writerow(["Title", "Media URL", "Pinterest board", "Thumbnail", "Description", "Link", "Publish date", "Keywords"])
                 writer.writerows(csv_rows)
-            st.success(f"🏆 Toplam {global_pin_counter} adet Pin görseli ve CSV dosyası başarıyla üretildi!")
+            
+            st.success(f"🏆 Total {global_pin_counter} Pin images and CSV file successfully generated!")
+            
+            st.markdown("---")
+            st.subheader("📥 Demo Çıktılarını İndirin")
+            
+            btn_col1, btn_col2 = st.columns(2)
+            
+            # 1. CSV Download Button
+            with btn_col1:
+                with open(csv_path, "rb") as csv_file:
+                    st.download_button(
+                        label="📄 Üretilen Pinterest CSV Dosyasını İndir",
+                        data=csv_file,
+                        file_name="pinterest_bulk_upload_demo.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
+            
+            # 2. ZIP Download Button
+            shutil.make_archive("demo_outputs", 'zip', output_dir)
+            with btn_col2:
+                with open("demo_outputs.zip", "rb") as zip_file:
+                    st.download_button(
+                        label="🖼️ Üretilen Görselleri İndir (.ZIP)",
+                        data=zip_file,
+                        file_name="demo_pin_gorselleri.zip",
+                        mime="application/zip",
+                        use_container_width=True
+                    )
